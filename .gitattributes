@@ -1,0 +1,12 @@
+# Generated from the live OpenAPI document by `npm run api:types`.
+#
+# linguist-generated collapses the file in pull request diffs and keeps it out of the
+# repository language statistics. It is 4200 lines the compiler reads and nobody edits;
+# without this, every contract change produces a diff that buries the real one.
+#
+# It is still committed and still diffable on purpose — CI regenerates it and fails the
+# build when the committed copy has drifted from what the server publishes.
+api/generated/schema.d.ts linguist-generated=true
+
+# Keep line endings sane across the Windows/Linux split this project is developed on.
+* text=auto eol=lf

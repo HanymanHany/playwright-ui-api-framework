@@ -1,0 +1,141 @@
+# GitHub Actions — Playwright UI + API tests
+#
+# Triggers: every push/PR to main, a nightly full run, and manual dispatch with a
+# tag filter.
+#
+# The split is the one described in the CI/CD article: fast feedback on every push,
+# heavy stuff on a schedule. A pipeline that takes forty minutes on every commit
+# gets ignored within a week, and an ignored pipeline is worse than none — it
+# gives the team the feeling of coverage without the fact of it.
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Nightly full regression — results are read in the morning, they block nobody
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: 'Tag filter (@smoke, @regression, @contract; empty = all)'
+        required: false
+        default: ''
+
+# A new push supersedes the previous run on the same branch — no point burning
+# minutes on a commit nobody is waiting for anymore.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Deliberately NOT the mcr.microsoft.com/playwright container.
+      # Pinning the image means its tag has to be kept in sync with the
+      # @playwright/test version in package.json by hand — two places, no check,
+      # and the mismatch surfaces as a confusing browser error months later.
+      # Installing browsers costs ~30s and makes the version follow package.json
+      # automatically, which is the right trade for a template anyone will fork.
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium
+
+      # Static gates first: they take seconds and catch the mistakes that would
+      # otherwise be discovered twelve minutes into a browser run.
+      - name: Quality gates
+        run: |
+          npm run typecheck
+          npm run lint
+          npm run format:check
+
+      # The generated types are committed. If the live spec has moved, this fails
+      # here — deliberately — rather than letting the suite test yesterday's contract.
+      - name: Check generated API types are up to date
+        run: |
+          npm run api:types
+          git diff --exit-code api/generated/schema.d.ts \
+            || (echo "::error::OpenAPI spec changed — run 'npm run api:types' and commit the result" && exit 1)
+
+      - name: Run tests
+        run: |
+          if [ -n "${{ github.event.inputs.tags }}" ]; then
+            npx playwright test --grep "${{ github.event.inputs.tags }}"
+          else
+            npx playwright test
+          fi
+        env:
+          CI: 'true'
+          WORKERS: '4'
+          # Namespaces every entity this run creates — two concurrent CI runs
+          # never collide on the shared demo environment.
+          RUN_ID: ${{ github.run_id }}
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results/
+          retention-days: 30
+
+  # Publishes the Allure report to GitHub Pages WITH history, so the report can
+  # answer the question a single run never can: is this test flaky, or did it
+  # actually start failing? Without history every failure looks like the first one.
+  report:
+    needs: test
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Allure results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results
+
+      - name: Restore previous report (for trends)
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Build report with history
+        uses: simple-elf/allure-report-action@v1.12
+        with:
+          allure_results: allure-results
+          allure_history: allure-history
+          gh_pages: gh-pages
+          keep_reports: 30
+
+      - name: Publish to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history

@@ -1,0 +1,15 @@
+# Generated from the live OpenAPI spec — reformatting it would produce a diff on
+# every `npm run api:types`, and CI compares that file byte for byte.
+api/generated/
+
+node_modules/
+allure-report/
+allure-results/
+playwright-report/
+test-results/
+package-lock.json
+.auth/
+tmp/
+
+# Personal working notes — gitignored, never part of the published project
+_*.md

@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Secrets — never commit
+.env
+.auth/
+
+# Test artifacts
+test-results/
+playwright-report/
+allure-results/
+allure-report/
+blob-report/
+
+# Temporary working files (AI session scratch space)
+tmp/
+.playwright-mcp/
+
+# Fingerprint of the last review — describes this working copy only
+.claude/.last-review.json
+
+# Personal working notes (article drafts, Russian summaries, CV remarks).
+# This repository is public and entirely in English — these stay local.
+_*.md
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
