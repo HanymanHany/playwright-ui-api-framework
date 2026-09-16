@@ -140,7 +140,8 @@ means "this suite is broken", and a status badge has no way to say "on purpose".
 
 ## How it was built
 
-**The code here was written with AI. The decisions were not.**
+**License: This project is released under the MIT License.
+AI Disclosure: The code in this repository was primarily generated with the assistance of AI tools, based on architectural decisions, prompts, and iterative modifications provided by the project maintainer.**
 
 That distinction is the whole point of this repository, and it is worth being direct
 about it rather than leaving it to be guessed. A model typed nearly every line. What
