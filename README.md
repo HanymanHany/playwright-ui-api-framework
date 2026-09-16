@@ -140,9 +140,6 @@ means "this suite is broken", and a status badge has no way to say "on purpose".
 
 ## How it was built
 
-**License: This project is released under the MIT License.
-AI Disclosure: The code in this repository was primarily generated with the assistance of AI tools, based on architectural decisions, prompts, and iterative modifications provided by the project maintainer.**
-
 That distinction is the whole point of this repository, and it is worth being direct
 about it rather than leaving it to be guessed. A model typed nearly every line. What
 it did not do was choose to register a user per run instead of adding retries, refuse
@@ -246,5 +243,5 @@ Being specific about the gaps is more useful than pretending there are none:
 - [The Three Pillars of QA](https://medium.com/@hamsterhany/the-three-pillars-of-qa-why-testing-alone-is-never-enough-68b454256e12)
 
 ## License
-
-MIT — see [LICENSE](LICENSE).
+**AI Disclosure: The code in this repository was primarily generated with the assistance of AI tools, based on architectural decisions, prompts, and iterative modifications provided by the project maintainer.**
+**MIT — see [LICENSE](LICENSE).**
