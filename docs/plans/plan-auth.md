@@ -1,5 +1,7 @@
 # Plan: auth
 
+Key: `auth`
+Feature: auth
 Status: implemented
 Sources: [cases_auth.md](../test-cases/cases_auth.md) · [context.md](../context/auth/context.md)
 

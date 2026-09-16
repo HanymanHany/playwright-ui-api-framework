@@ -126,6 +126,35 @@ test('scenario description', { tag: ['@ui', '@smoke'] }, async ({ catalogPage })
   response then hangs for the whole timeout and reports "browser closed", which
   explains nothing — return `null` and let the test assert on it
 
+## Tags
+
+Tags come from `tests/tags.ts` and nowhere else: `{ tag: [TAGS.api, TAGS.smoke] }`.
+
+A raw `'@smoke'` string is refused by `npm run check:tags`, and for a reason worth
+stating: a mistyped tag produces no error at all — the test simply stops being part of
+the smoke run, the report stays green, and nobody finds out until the release that tag
+was supposed to protect. A new tag is added to the registry first; if it should change
+report severity, map it in `core/allure-labels.ts` as well.
+
+## Assertions on API responses
+
+Status checks on `*Raw` responses go through `api/expect.ts`:
+
+```typescript
+expectStatus(response, 401, 'login with a wrong password')
+expectClientError(response, 'favouriting the same product twice')
+expectRejectedField(response, 422, 'dob', 'registration with an under-age date of birth')
+```
+
+`expect(response.status).toBe(422)` fails with "expected 422, received 400" and leaves
+the reader to guess which field the server disliked; these print the body. A validation
+test also names the field it expects to be rejected — otherwise it passes just as
+happily when the request is refused for a completely different reason.
+
+Everything else keeps using `expect` from `fixtures/base.fixture`. `api/expect.ts` is
+the only module outside the fixtures allowed to import `expect` from `@playwright/test`,
+because it IS the assertion layer and importing the fixture there would be a cycle.
+
 ## Not allowed
 
 - `test.only` in committed code

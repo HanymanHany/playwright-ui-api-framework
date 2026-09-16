@@ -1,5 +1,5 @@
 /**
- * tests/ui/register.spec.ts — the registration form.
+ * tests/auth/register.ui.spec.ts — the registration form.
  *
  * The API-level rules already have their own tests (tests/api/registration.spec.ts).
  * What these add is the part only a browser can answer: does the form send the right
@@ -15,6 +15,7 @@
 import { UsersApi } from '../../api/users.api'
 import { BREACHED_PASSWORD, buildRegistrationForm } from '../../data/test-user.data'
 import { test, expect } from '../../fixtures/base.fixture'
+import { TAGS } from '../tags'
 
 const createdUserIds: string[] = []
 
@@ -28,7 +29,7 @@ test.afterAll(async () => {
 test.describe('[UI / Auth / Registration]', () => {
 	test(
 		'a user registered through the form can sign in',
-		{ tag: ['@ui', '@regression'] },
+		{ tag: [TAGS.ui, TAGS.regression] },
 		async ({ guest, authApi, usersApi }) => {
 			const account = buildRegistrationForm('ui-reg-happy')
 
@@ -66,7 +67,7 @@ test.describe('[UI / Auth / Registration]', () => {
 
 	test(
 		'a breached password is refused with a visible message',
-		{ tag: ['@ui', '@negative', '@security'] },
+		{ tag: [TAGS.ui, TAGS.negative, TAGS.security] },
 		async ({ guest }) => {
 			const account = buildRegistrationForm('ui-reg-breached', { password: BREACHED_PASSWORD })
 

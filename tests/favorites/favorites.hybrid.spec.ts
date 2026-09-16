@@ -1,5 +1,5 @@
 /**
- * tests/hybrid/favorites.spec.ts — the pattern this framework exists to show.
+ * tests/favorites/favorites.hybrid.spec.ts — the pattern this framework exists to show.
  *
  * THE IDEA
  *
@@ -19,6 +19,8 @@
 import { test, expect } from '../../fixtures/base.fixture'
 import { readDataSnapshot, productsFor, DataSnapshot } from '../../utils/data-snapshot'
 
+import { TAGS } from '../tags'
+
 import type { Product } from '../../api/types'
 
 let snapshot: DataSnapshot
@@ -35,7 +37,7 @@ test.beforeAll(() => {
 test.describe('[Hybrid / Favorites]', () => {
 	test(
 		'a favorite created via API is rendered in the UI',
-		{ tag: ['@hybrid', '@smoke'] },
+		{ tag: [TAGS.hybrid, TAGS.smoke] },
 		async ({ favoritesApi, favoritesPage }) => {
 			const product = products[0]!
 			let favoriteId = ''
@@ -62,7 +64,7 @@ test.describe('[Hybrid / Favorites]', () => {
 
 	test(
 		'deleting a favorite in the UI removes it from the API',
-		{ tag: ['@hybrid', '@regression'] },
+		{ tag: [TAGS.hybrid, TAGS.regression] },
 		async ({ favoritesApi, favoritesPage }) => {
 			const product = products[1]!
 			let favoriteId = ''

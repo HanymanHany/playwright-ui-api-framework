@@ -1,5 +1,5 @@
 /**
- * tests/ui/login.spec.ts — UI login and sign-out.
+ * tests/auth/login.ui.spec.ts — UI login and sign-out.
  *
  * These use the `guest` fixture (fresh context, empty storageState), because the
  * "ui" project starts every test already authenticated. Logging in is the thing
@@ -10,27 +10,32 @@
  * to the user we just logged in as — which is the actual claim being made.
  */
 import { test } from '../../fixtures/base.fixture'
+import { TAGS } from '../tags'
 
 test.describe('[UI / Auth / Login]', () => {
-	test('valid credentials land on My account as that user', { tag: ['@ui', '@smoke'] }, async ({ guest, runUser }) => {
-		await test.step('Prepare: open the login page as a guest', async () => {
-			await guest.loginPage.goto()
-			await guest.loginPage.assertPageLoaded()
-		})
+	test(
+		'valid credentials land on My account as that user',
+		{ tag: [TAGS.ui, TAGS.smoke] },
+		async ({ guest, runUser }) => {
+			await test.step('Prepare: open the login page as a guest', async () => {
+				await guest.loginPage.goto()
+				await guest.loginPage.assertPageLoaded()
+			})
 
-		await test.step('Action: submit the run user credentials', async () => {
-			await guest.loginPage.login(runUser.email, runUser.password)
-		})
+			await test.step('Action: submit the run user credentials', async () => {
+				await guest.loginPage.login(runUser.email, runUser.password)
+			})
 
-		await test.step('Verify: redirected to /account and greeted by name', async () => {
-			await guest.loginPage.assertLoginSucceeded()
-			await guest.accountPage.assertSignedInAs(`${runUser.firstName} ${runUser.lastName}`)
-		})
-	})
+			await test.step('Verify: redirected to /account and greeted by name', async () => {
+				await guest.loginPage.assertLoginSucceeded()
+				await guest.accountPage.assertSignedInAs(`${runUser.firstName} ${runUser.lastName}`)
+			})
+		}
+	)
 
 	test(
 		'wrong password shows an error and stays on login',
-		{ tag: ['@ui', '@negative'] },
+		{ tag: [TAGS.ui, TAGS.negative] },
 		async ({ guest, runUser }) => {
 			await test.step('Prepare: open the login page as a guest', async () => {
 				await guest.loginPage.goto()
@@ -47,7 +52,7 @@ test.describe('[UI / Auth / Login]', () => {
 		}
 	)
 
-	test('signing out returns to the login page', { tag: ['@ui', '@regression'] }, async ({ accountPage }) => {
+	test('signing out returns to the login page', { tag: [TAGS.ui, TAGS.regression] }, async ({ accountPage }) => {
 		await test.step('Prepare: open the account page (already authenticated)', async () => {
 			await accountPage.goto()
 			await accountPage.assertOnAccountPage()

@@ -23,8 +23,17 @@
  *
  * The two helpers below keep the calling style the clients already had: throw on
  * an unexpected status, or return status + body for negative tests.
+ *
+ * ONE THING IT DOES ADD
+ *
+ * Every client built here carries the traffic middleware (`api/traffic.ts`), so a
+ * failing test can attach the requests that produced it — with the bodies and a
+ * ready `curl`. Instrumenting the factory rather than each client is what keeps that
+ * complete: a client added later is observed without anybody remembering to do it.
  */
 import createClient from 'openapi-fetch'
+
+import { isRecording, record, sanitizeBody } from './traffic'
 
 import type { paths } from './generated/schema'
 
@@ -48,8 +57,84 @@ export interface FetchResult<T> {
 
 export type ApiClient = ReturnType<typeof createClient<paths>>
 
+/** In-flight requests, keyed by the id openapi-fetch assigns to each one. */
+const inFlight = new Map<string, { startedAt: number; body?: unknown; authenticated: boolean }>()
+
+/**
+ * Records every exchange for the report — see `api/traffic.ts` for what is kept and
+ * what is redacted.
+ *
+ * It lives here, in the one factory every client goes through, rather than in each
+ * `*.api.ts`: a new client written next year is observed without its author doing
+ * anything, which is the only kind of instrumentation that stays complete.
+ *
+ * Both bodies are read from clones. Reading the original would consume the stream and
+ * the caller would receive an empty response — an observer that changes what it
+ * observes is worse than no observer.
+ */
+const trafficMiddleware = {
+	async onRequest({ request, id }: { request: Request; id: string }) {
+		if (!isRecording()) return undefined
+		inFlight.set(id, {
+			startedAt: Date.now(),
+			body: sanitizeBody(await request.clone().text()),
+			authenticated: request.headers.has('Authorization'),
+		})
+		return undefined
+	},
+
+	async onResponse({
+		request,
+		response,
+		schemaPath,
+		id,
+	}: {
+		request: Request
+		response: Response
+		schemaPath: string
+		id: string
+	}) {
+		const started = inFlight.get(id)
+		inFlight.delete(id)
+		if (!started) return undefined
+
+		record({
+			method: request.method,
+			path: schemaPath,
+			url: request.url,
+			status: response.status,
+			ms: Date.now() - started.startedAt,
+			authenticated: started.authenticated,
+			requestBody: started.body,
+			responseBody: sanitizeBody(await response.clone().text()),
+		})
+		return undefined
+	},
+
+	/** A connection that never answered is the most confusing failure of all — record it too. */
+	onError({ request, error, schemaPath, id }: { request: Request; error: unknown; schemaPath: string; id: string }) {
+		const started = inFlight.get(id)
+		inFlight.delete(id)
+		if (!started) return undefined
+
+		record({
+			method: request.method,
+			path: schemaPath,
+			url: request.url,
+			status: 0,
+			ms: Date.now() - started.startedAt,
+			authenticated: started.authenticated,
+			requestBody: started.body,
+			responseBody: `transport error: ${error instanceof Error ? error.message : String(error)}`,
+		})
+		return undefined
+	},
+}
+
 export function createApiClient(baseUrl: string): ApiClient {
-	return createClient<paths>({ baseUrl })
+	const client = createClient<paths>({ baseUrl })
+	client.use(trafficMiddleware)
+	return client
 }
 
 /**

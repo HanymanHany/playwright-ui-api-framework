@@ -1,5 +1,5 @@
 /**
- * tests/ui/demo-failure.spec.ts — a UI test that fails ON PURPOSE.
+ * tests/demo/demo-failure.ui.spec.ts — a UI test that fails ON PURPOSE.
  *
  * Companion to tests/api/demo-failure.spec.ts. That one shows what an API failure
  * reads like; this one shows what the browser leaves behind: a screenshot of the page
@@ -18,11 +18,12 @@
  * after the test ends, when that step is already closed.
  */
 import { test } from '../../fixtures/base.fixture'
+import { TAGS } from '../tags'
 
 test.describe('[UI / Demo failures]', () => {
 	test(
 		'DEMO FAIL: the header is asserted to greet the wrong name',
-		{ tag: ['@demo', '@ui'] },
+		{ tag: [TAGS.demo, TAGS.ui] },
 		async ({ guest, runUser }) => {
 			await test.step('Prepare: open the login page as a guest', async () => {
 				await guest.loginPage.goto()

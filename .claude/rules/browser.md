@@ -3,19 +3,46 @@
 The shared instruction set for all live browser work: navigating pages, studying UI
 behaviour, and collecting or verifying locators.
 
-This used to be a skill. It was never invoked by anyone — `/explore` and the
-`explorer` agent read it, `/run-tests` reads it when diagnosing a locator failure.
-A file that is only ever read is a rule, not a procedure, so it lives here.
+This used to be a skill. It was never invoked by anyone — `/checklist` and the `explorer`
+agent read it, and `/autotests` reads it when diagnosing a locator failure. A file that is
+only ever read is a rule, not a procedure, so it lives here.
 
 ## Tooling
 
-Primary: **Playwright MCP** (configured in `.mcp.json`, headless chromium).
-Health check before any session: `browser_navigate → about:blank`. If it fails — stop and report:
-"Playwright MCP is not responding. Check `.mcp.json` and restart the session."
+Primary: **Playwright MCP** ([microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp)),
+configured in `.mcp.json` and started with the session. It gives the exploring agent real
+browser control — `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`,
+`browser_evaluate`, `browser_take_screenshot` — against an accessibility snapshot rather
+than pixels, which is why locator work through it is exact rather than approximate.
+
+Health check before any session: `browser_navigate → about:blank`. If it fails — stop and
+report: "Playwright MCP is not responding. Check `.mcp.json` and restart the session."
 
 Fallback when MCP is unavailable: write a one-off script in `tmp/` using `@playwright/test`'s
-`chromium.launch()` and run it with `npx tsx tmp/<name>.ts` — dump `[data-test]` elements per page
-(see git history of `tmp/explore-ui.ts` for the canonical dump script pattern).
+`chromium.launch()` and run it with `npx tsx tmp/<name>.ts` — dump `[data-test]` elements per page.
+The fallback exists so a broken MCP does not block the pipeline, not as an equal option: it
+sees one page per script run and cannot interact, so behaviour mapping through it is guesswork.
+
+## Which address to open
+
+Never a hardcoded host. The target comes from `config/env.ts`:
+
+- `UI_BASE_URL` — default `https://practicesoftwaretesting.com`
+- `API_BASE_URL` — default `https://api.practicesoftwaretesting.com`
+- `OPENAPI_URL` — default `${API_BASE_URL}/docs`
+
+On a real project these are the only lines that change: put your local stand or test
+environment in `.env` (`UI_BASE_URL=http://localhost:4200`, `API_BASE_URL=http://localhost:8091`)
+and everything — the suite, the exploring agent, type generation — follows. Nothing else
+in the project knows a hostname.
+
+Two options worth knowing about when pointing this at a company environment
+(see the playwright-mcp README for the full list, they go in `.mcp.json` as extra args):
+
+- `--allowed-origins` — a semicolon-separated allowlist. The agent then physically cannot
+  navigate anywhere but your stand, which is the difference between a policy and a fact
+- `--storage-state` / `--isolated` — start each session from a saved session or from a
+  clean profile. Useful where login goes through SSO and cannot be scripted per run
 
 ## Navigation sequence for each page
 

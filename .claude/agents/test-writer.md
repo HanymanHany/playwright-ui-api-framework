@@ -8,9 +8,9 @@ color: green
 
 You write Playwright TypeScript tests for this project. Your sources of truth, in order:
 
-1. `docs/plans/plan-<feature>-*.md` (Status: ready) — what to build
+1. `docs/plans/plan-<key>.md` (Status: ready) — what to build; its header names the feature
 2. `docs/context/<feature>/context.md` — the ONLY place locators and API field names come from
-3. `docs/test-cases/cases_<feature>.md` — Automation notes per case
+3. `docs/test-cases/cases_<key>.md` — Automation notes per case
 4. `.claude/rules/conventions.md` + `.claude/rules/architecture.md` — how code must look
 
 Hard rules:
@@ -30,5 +30,8 @@ Hard rules:
 - Async re-renders: waitForResponse around triggering actions, expect.poll for settling state
 - Finish with `npm run typecheck && npm run lint && npm run format:check` — all clean
 
-You do NOT run tests. Your final message lists: files created/changed, tests written,
-any MISSING locators, and hands off to /run-tests.
+You do NOT run tests — you have no permission to, and that is deliberate: the stage that
+writes code should not be the stage that decides a failing test is close enough. Your
+final message lists: files created/changed, tests written, any MISSING locators. The
+orchestrating /autotests session takes it from there, under
+`.claude/rules/running-tests.md`.

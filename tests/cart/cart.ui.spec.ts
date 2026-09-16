@@ -1,5 +1,5 @@
 /**
- * tests/ui/cart.spec.ts — add to cart and checkout step 1.
+ * tests/cart/cart.ui.spec.ts — add to cart and checkout step 1.
  *
  * Data strategy: the product is picked from the API snapshot (in-stock only) and
  * opened directly at /product/{id}. No clicking through the grid to find it —
@@ -15,6 +15,8 @@
 import { test } from '../../fixtures/base.fixture'
 import { readDataSnapshot, productsFor, DataSnapshot } from '../../utils/data-snapshot'
 
+import { TAGS } from '../tags'
+
 import type { Product } from '../../api/types'
 
 let snapshot: DataSnapshot
@@ -28,7 +30,7 @@ test.beforeAll(() => {
 test.describe('[UI / Cart]', () => {
 	test(
 		'an added product appears in checkout with the API price',
-		{ tag: ['@ui', '@smoke'] },
+		{ tag: [TAGS.ui, TAGS.smoke] },
 		async ({ productPage, checkoutPage }) => {
 			const product = products[0]!
 
@@ -61,7 +63,7 @@ test.describe('[UI / Cart]', () => {
 
 	test(
 		'adding the same product twice increases the quantity, not the line count',
-		{ tag: ['@ui', '@regression'] },
+		{ tag: [TAGS.ui, TAGS.regression] },
 		async ({ productPage, checkoutPage }) => {
 			const product = products[1]!
 

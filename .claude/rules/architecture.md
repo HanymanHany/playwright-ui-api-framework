@@ -27,7 +27,7 @@ the data is how you buy a suite that passes locally and fails in CI once a week.
 the diagnosis to the day it is most expensive. If a test needs a retry to pass, it is
 reporting an isolation problem and should be read that way.
 
-Measured on this suite: 46s at one worker, ~21s at four. It plateaus at four because
+Measured on this suite: roughly a minute at one worker, ~30s at four (it is a public demo over the internet, so the number moves). It plateaus at four because
 34 tests are network-bound, not CPU-bound — more workers buy nothing here.
 
 ## 3. Types are generated from the live OpenAPI spec
@@ -232,3 +232,53 @@ Note what did **not** move: the search box is in the header, and it stayed in
 `CatalogPage`, because only the catalog uses it and the catalog owns the response it
 waits for. Extracting it would be copying a pattern rather than solving a problem —
 which is the same mistake as decision 5's token pool, one size down.
+
+## 15. A failing test attaches what it did, not just what it expected
+
+A red UI test comes with a screenshot, a trace and the browser console. A red API test,
+by default, comes with one line: expected 201, received 422. The request that caused it
+and the calls that set the state up are gone, so every diagnosis starts by reproducing
+the run — which on a shared environment reproduces a slightly different situation.
+
+So the client factory in `api/client.ts` installs a middleware that records every
+exchange, and a failing test attaches the whole conversation (`api/traffic.ts`): what
+was not 2xx first, with both bodies, then every call in order, and a `curl` per entry
+that replays it.
+
+Three details are load-bearing:
+
+- **It is installed in the factory, not in each client.** A client written next year is
+  observed without its author doing anything. Instrumentation that depends on being
+  remembered is instrumentation that is already incomplete.
+- **Secrets are redacted on the way in**, not at render time. A value that was never
+  stored cannot leak out of a CI artifact later, and the `curl` carries `$TOKEN` rather
+  than a live JWT.
+- **Passing tests attach nothing.** This is diagnostics, not logging. A report where
+  every test carries a payload is a report nobody opens.
+
+The same reasoning produced `api/expect.ts`: `expect(status).toBe(422)` fails with
+"expected 422, received 400" and leaves the reader guessing which field the server
+disliked, so the helpers print the body — and `expectRejectedField` makes a validation
+test name the field it expects to be rejected, because otherwise it passes just as
+happily when the request is refused for an entirely different reason.
+
+## 16. Anything that can silently stop checking must be derived
+
+Two lists in this project used to be maintained by hand, and both had the same failure
+mode: they stay correct on the day they are written and then quietly stop covering what
+was added afterwards. Nothing turns red. The coverage simply stops growing.
+
+- **The operations the contract test verifies.** `discoverUsedOperations()` reads
+  `api/*.api.ts` and extracts the path literals the clients call. `openapi-fetch`
+  requires those to be literals from the generated schema — they cannot be assembled at
+  runtime without losing type-checking — so reading them back is exact rather than
+  heuristic. It throws when it finds fewer than expected, because a parser that silently
+  matches nothing would turn the contract test into a test of nothing.
+- **Tags.** `tests/tags.ts` is the only place a tag exists, and `scripts/check-tags.mjs`
+  refuses a raw `'@smoke'` in a spec. A mistyped tag is the purest version of this
+  problem: no error, no red test, the test just disappears from the smoke run.
+
+The same instinct is already in `core/allure-labels.ts` (report metadata derived from
+what the test declares) and in `PRODUCT_ALLOCATIONS` (data slices registered rather than
+counted by hand). The rule generalises: if a list has to agree with the code, derive it
+from the code or make disagreeing it fail loudly.

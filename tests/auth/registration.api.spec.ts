@@ -1,5 +1,5 @@
 /**
- * tests/api/registration.spec.ts — the registration endpoint.
+ * tests/auth/registration.api.spec.ts — the registration endpoint.
  *
  * Worth its own file because registration is what the whole isolation strategy rests
  * on: if `POST /users/register` changes its rules, global-setup stops working and
@@ -14,6 +14,8 @@
 import { UsersApi } from '../../api/users.api'
 import { BREACHED_PASSWORD, buildApiUser } from '../../data/test-user.data'
 import { test, expect } from '../../fixtures/base.fixture'
+import { expectClientError, expectRejectedField } from '../../api/expect'
+import { TAGS } from '../tags'
 
 /**
  * Cleaned up as admin — a user cannot delete itself (403). The array is module-level
@@ -29,7 +31,7 @@ test.afterAll(async () => {
 })
 
 test.describe('[API / Registration]', () => {
-	test('a new account is created and can log in', { tag: ['@api', '@smoke'] }, async ({ usersApi, authApi }) => {
+	test('a new account is created and can log in', { tag: [TAGS.api, TAGS.smoke] }, async ({ usersApi, authApi }) => {
 		const account = buildApiUser('reg-happy')
 
 		const created = await test.step('Action: POST /users/register', async () => {
@@ -49,7 +51,7 @@ test.describe('[API / Registration]', () => {
 		})
 	})
 
-	test('registering the same email twice is rejected', { tag: ['@api', '@negative'] }, async ({ usersApi }) => {
+	test('registering the same email twice is rejected', { tag: [TAGS.api, TAGS.negative] }, async ({ usersApi }) => {
 		const account = buildApiUser('reg-duplicate')
 
 		await test.step('Prepare: register the account once', async () => {
@@ -63,23 +65,21 @@ test.describe('[API / Registration]', () => {
 		})
 
 		await test.step('Verify: rejected as a client error, not a 500 and not a second row', async () => {
-			expect(second.status).toBeGreaterThanOrEqual(400)
-			expect(second.status).toBeLessThan(500)
+			expectClientError(second, 'registering the same email twice')
 		})
 	})
 
-	test('a breached password is rejected', { tag: ['@api', '@negative', '@security'] }, async ({ usersApi }) => {
+	test('a breached password is rejected', { tag: [TAGS.api, TAGS.negative, TAGS.security] }, async ({ usersApi }) => {
 		const response = await test.step('Action: register with a password from a known leak', async () => {
 			return usersApi.registerRaw(buildApiUser('reg-breached', { password: BREACHED_PASSWORD }))
 		})
 
 		await test.step('Verify: 422 and the message names the password field', async () => {
-			expect(response.status).toBe(422)
-			expect(JSON.stringify(response.body).toLowerCase()).toContain('password')
+			expectRejectedField(response, 422, 'password', 'registration with a breached password')
 		})
 	})
 
-	test('a date of birth under 18 is rejected', { tag: ['@api', '@negative'] }, async ({ usersApi }) => {
+	test('a date of birth under 18 is rejected', { tag: [TAGS.api, TAGS.negative] }, async ({ usersApi }) => {
 		const underage = new Date()
 		underage.setFullYear(underage.getFullYear() - 10)
 		const dob = underage.toISOString().slice(0, 10)
@@ -89,8 +89,7 @@ test.describe('[API / Registration]', () => {
 		})
 
 		await test.step('Verify: 422 and the message names the dob field', async () => {
-			expect(response.status).toBe(422)
-			expect(JSON.stringify(response.body).toLowerCase()).toContain('dob')
+			expectRejectedField(response, 422, 'dob', 'registration with an under-age date of birth')
 		})
 	})
 })

@@ -1,11 +1,14 @@
 # Checklist: Auth (Login / Registration / Session)
 
-**Source:** exploration session, 2026-08-29
+**Key:** `auth` — the argument every stage of the pipeline is run with. On a real project
+this is the tracker id (`PROJ-431`); here the feature name plays that role.
+**Feature:** auth
 **Context:** [docs/context/auth/context.md](../context/auth/context.md)
+**Source:** exploration session, 2026-08-29 — ticket text plus what the running app actually did
 **Legend:** `[H/M/L]` priority · `[TC]` = a test case exists in
 [cases_auth.md](../test-cases/cases_auth.md) · layer = where the check belongs
 
-This is a worked example of what the exploration stage produces. Items are business
+This is a worked example of what the `/checklist` stage produces. Items are business
 scenarios, not element checks — "the email field has a red border" is not a scenario,
 "a user with a wrong password is told so and stays put" is.
 

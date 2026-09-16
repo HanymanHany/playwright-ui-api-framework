@@ -104,12 +104,21 @@ document into `.auth/`.
 
 Then the full suite: `npm test` — about 21 seconds at four workers.
 
-## Step 8 — Browser tooling for exploration (optional)
+## Step 8 — Browser tooling for the checklist stage
 
-Only needed for the exploration stage, not for running tests. Playwright MCP is
-configured in `.mcp.json` and starts with the session; confirm it responds by
-navigating to `about:blank`. If it does not, exploration falls back to one-off scripts
-in `tmp/` — see `.claude/rules/browser.md`. Do not block setup on this.
+Not needed to run tests; needed by `/checklist`, which drives a real browser through
+**Playwright MCP** ([microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp)).
+It is configured in `.mcp.json` and starts with the session — confirm it responds by
+navigating to `about:blank`.
+
+If it does not respond, the usual causes are a session started before `.mcp.json` existed
+(restart it) or npx being unable to fetch the package (network or proxy). Exploration then
+falls back to one-off scripts in `tmp/` — see `.claude/rules/browser.md`. Do not block
+setup on this.
+
+Pointing the pipeline at your own environment is two variables in `.env`: `UI_BASE_URL`
+and `API_BASE_URL`. Everything else — the suite, the exploring agent, type generation —
+reads them from `config/env.ts`.
 
 ## Step 9 — Report
 
@@ -117,5 +126,5 @@ in `tmp/` — see `.claude/rules/browser.md`. Do not block setup on this.
 Ready:    [steps that were already correct]
 Fixed:    [what this run installed or created]
 Blocked:  [what still fails → which step → what the user has to do]
-Next:     npm test, or the exploration stage for a feature that has no context.md yet
+Next:     npm test, or /checklist <key> for a feature that has no context.md yet
 ```

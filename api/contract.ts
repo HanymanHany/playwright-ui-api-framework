@@ -43,6 +43,62 @@ export function readSpec(): OpenApiDocument {
 	return cached
 }
 
+// ── What the framework actually calls ─────────────────────────────────────────
+
+/** One operation as the spec addresses it: a path template plus a lower-case method. */
+export interface Operation {
+	path: string
+	method: string
+}
+
+/** Where the typed clients live. Every call to the API is made from one of these. */
+const CLIENTS_DIR = 'api'
+
+/**
+ * Reads the API clients and returns every operation they call.
+ *
+ * WHY DERIVED RATHER THAN LISTED
+ *
+ * This used to be a hand-written array in the contract spec. A list like that is
+ * correct on the day it is written and silently incomplete afterwards: add a method
+ * to a client, forget the list, and the endpoint is simply never contract-checked.
+ * Nothing goes red — the coverage just quietly stops growing, which is the failure
+ * mode this project already refuses elsewhere (report labels are derived, not typed
+ * out; product slices are registered, not counted by hand).
+ *
+ * The clients call `client.GET('/products/{productId}', …)`, and `openapi-fetch`
+ * requires that first argument to be a literal from the generated schema — it cannot
+ * be built at runtime without losing type-checking. So the literal is always there in
+ * the source, and reading it back is exact rather than heuristic.
+ *
+ * `expectedAtLeast` guards the other direction: if a refactor changes the call style,
+ * this returns an empty list and the contract test would pass by checking nothing. A
+ * check that can silently become vacuous is worse than no check.
+ */
+export function discoverUsedOperations(expectedAtLeast = 10): Operation[] {
+	const found = new Map<string, Operation>()
+
+	for (const file of fs.readdirSync(CLIENTS_DIR)) {
+		if (!file.endsWith('.api.ts')) continue
+		const source = fs.readFileSync(`${CLIENTS_DIR}/${file}`, 'utf-8')
+
+		for (const [, method, path] of source.matchAll(/client\.(GET|POST|PUT|PATCH|DELETE)\(\s*'([^']+)'/g)) {
+			const operation = { path: path as string, method: (method as string).toLowerCase() }
+			found.set(`${operation.method} ${operation.path}`, operation)
+		}
+	}
+
+	if (found.size < expectedAtLeast) {
+		throw new Error(
+			`Only ${found.size} API operations were discovered in ${CLIENTS_DIR}/*.api.ts, expected at least ` +
+				`${expectedAtLeast}. The clients' call style probably changed — fix this parser rather than ` +
+				`lowering the threshold, or the contract test silently checks nothing.`
+		)
+	}
+
+	return [...found.values()].sort((a, b) => `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`))
+}
+
 /**
  * Pulls the JSON schema of a documented response out of the spec.
  * Throws when the operation or status is missing — which is itself a finding:

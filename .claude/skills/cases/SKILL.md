@@ -2,7 +2,7 @@
 name: cases
 description: 'Turns an approved QA checklist into detailed test cases: picks the right layer (api / ui / hybrid) for each scenario, writes machine-verifiable expected results, and adds the Automation notes the implementation stage builds from.'
 when_to_use: 'Use when the user asks to write test cases, design test scenarios, turn a checklist into cases, decide whether a scenario belongs in an API or a UI test, or asks which scenarios are worth automating.'
-argument-hint: '[checklist-path]'
+argument-hint: '[task-key]'
 model: opus
 allowed-tools: Read Write Edit Grep Glob
 ---
@@ -12,15 +12,29 @@ allowed-tools: Read Write Edit Grep Glob
      automating. A weaker model produces plausible cases that cover the happy path
      and miss the risk — and everything downstream is built on this output. -->
 
-## Step 1 — Pick scope
+## Step 1 — Resolve the key, pick scope
 
-If no path given: list `docs/checklists/`, show per-file coverage counts
-(items vs `[TC]`-marked), ask which file and which priorities (H/M/L/all).
+The argument is the same **key** `/checklist` was run with — a tracker id (`PROJ-431`) or
+a feature name (`checkout`). Everything is found from it:
+
+```bash
+ls docs/checklists/checklist_<key>.md      # the task checklist
+head -10 docs/checklists/checklist_<key>.md # its header names the feature and context file
+```
+
+No key given: list `docs/checklists/` with per-file coverage counts (items vs
+`[TC]`-marked) and ask which one — the specialist should be choosing from what exists, not
+recalling it. No checklist for this key: stop, say so, and offer `/checklist <key>`.
+Inventing scenarios here skips the only gate where the specialist chose what matters.
+Full contract: `.claude/rules/pipeline.md`.
+
+Then ask which items are in scope: priorities (H/M/L/all), or an explicit list. Not
+everything on a checklist becomes a case, and that decision belongs to the specialist.
 
 ## Step 2 — Read sources in order
 
-1. `docs/context/<feature>/context.md` — exact locators, API fields, validation
-   rules, pitfalls. PRIMARY source for Automation notes
+1. `docs/context/<feature>/context.md` (the path is in the checklist header) — exact
+   locators, API fields, validation rules, pitfalls. PRIMARY source for Automation notes
 2. Functional Context block of the checklist
 3. The checklist items themselves (skip `[x] ... [TC]` lines)
 
@@ -92,6 +106,18 @@ never silently change unmentioned cases; never drop Notes sections during edits.
 
 ## Step 5 — Save + postcondition
 
-1. Save to `docs/test-cases/cases_<feature>.md` (append if it exists)
+1. Save to `docs/test-cases/cases_<key>.md` (append if it exists), carrying the same
+   header as the checklist — `Key`, `Feature`, `Context` — so `/autotests <key>` resolves
+   all three files from one argument
 2. Mark covered checklist lines: `- [x] ... [TC]`
-3. Report: written N cases (H/M/L, per layer), remaining uncovered
+3. Report: written N cases (H/M/L, per layer), remaining uncovered, and
+   "Next step: /autotests `<key>`"
+
+### If the team keeps cases in a TMS
+
+This repository writes Markdown because a public template cannot assume Qase, TestRail or
+Zephyr. On a real project this is where approved cases are pushed to the TMS through its
+API, and where the same API marks them `automated` once the implementation stage is done.
+It is a thin skill of its own — the decision of what to write was already made and
+approved above; pushing it is mechanical. Manual re-typing has no advantage over it
+except habit.

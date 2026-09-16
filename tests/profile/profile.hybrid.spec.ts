@@ -1,5 +1,5 @@
 /**
- * tests/hybrid/profile.spec.ts — edit in the UI, verify through the API.
+ * tests/profile/profile.hybrid.spec.ts — edit in the UI, verify through the API.
  *
  * The tempting assertion here is the green success toast. It is also the weak one:
  * a toast proves the frontend rendered a toast. It does not prove the change was
@@ -16,11 +16,12 @@
  */
 import { RUN_ID } from '../../config/env'
 import { test, expect } from '../../fixtures/base.fixture'
+import { TAGS } from '../tags'
 
 test.describe('[Hybrid / Profile]', () => {
 	test(
 		'a profile edited in the UI is persisted in the API',
-		{ tag: ['@hybrid', '@regression'] },
+		{ tag: [TAGS.hybrid, TAGS.regression] },
 		async ({ profilePage, usersApi, runUser }) => {
 			const changes = { phone: '0311234567', city: `Delft-${RUN_ID.slice(-4)}` }
 

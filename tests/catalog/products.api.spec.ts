@@ -1,5 +1,5 @@
 /**
- * tests/api/products.spec.ts — catalog API behaviour.
+ * tests/catalog/products.api.spec.ts — catalog API behaviour.
  *
  * Structural checks live in contract.spec.ts (does the response match the spec).
  * This file checks BEHAVIOUR: does filtering actually filter, does search actually
@@ -8,6 +8,7 @@
  */
 import { test, expect } from '../../fixtures/base.fixture'
 import { readDataSnapshot, pickLeafCategory, pickSearchTerm, DataSnapshot } from '../../utils/data-snapshot'
+import { TAGS } from '../tags'
 
 let snapshot: DataSnapshot
 let searchTerm: string
@@ -19,27 +20,31 @@ test.beforeAll(() => {
 })
 
 test.describe('[API / Products]', () => {
-	test('product list is paginated with a consistent envelope', { tag: ['@api', '@smoke'] }, async ({ productsApi }) => {
-		const page1 = await test.step('Action: GET /products page 1', async () => {
-			return productsApi.getProducts(1)
-		})
+	test(
+		'product list is paginated with a consistent envelope',
+		{ tag: [TAGS.api, TAGS.smoke] },
+		async ({ productsApi }) => {
+			const page1 = await test.step('Action: GET /products page 1', async () => {
+				return productsApi.getProducts(1)
+			})
 
-		await test.step('Verify: pagination meta is self-consistent', async () => {
-			expect(page1.current_page).toBe(1)
-			expect(page1.total ?? 0).toBeGreaterThan(page1.per_page ?? 0)
-			expect(page1.data).toHaveLength(page1.per_page ?? 0)
-		})
+			await test.step('Verify: pagination meta is self-consistent', async () => {
+				expect(page1.current_page).toBe(1)
+				expect(page1.total ?? 0).toBeGreaterThan(page1.per_page ?? 0)
+				expect(page1.data).toHaveLength(page1.per_page ?? 0)
+			})
 
-		await test.step('Verify: every product carries the fields the UI renders', async () => {
-			for (const product of page1.data) {
-				expect.soft(product.id, `product "${product.name}" must have id`).toBeTruthy()
-				expect.soft(typeof product.price, `product "${product.name}" price must be number`).toBe('number')
-				expect.soft(product.category?.slug, `product "${product.name}" must carry a category`).toBeTruthy()
-			}
-		})
-	})
+			await test.step('Verify: every product carries the fields the UI renders', async () => {
+				for (const product of page1.data) {
+					expect.soft(product.id, `product "${product.name}" must have id`).toBeTruthy()
+					expect.soft(typeof product.price, `product "${product.name}" price must be number`).toBe('number')
+					expect.soft(product.category?.slug, `product "${product.name}" must carry a category`).toBeTruthy()
+				}
+			})
+		}
+	)
 
-	test('page 2 returns a different set of products', { tag: ['@api', '@regression'] }, async ({ productsApi }) => {
+	test('page 2 returns a different set of products', { tag: [TAGS.api, TAGS.regression] }, async ({ productsApi }) => {
 		const [first, second] = await test.step('Action: GET pages 1 and 2', async () => {
 			return Promise.all([productsApi.getProducts(1), productsApi.getProducts(2)])
 		})
@@ -51,7 +56,7 @@ test.describe('[API / Products]', () => {
 		})
 	})
 
-	test('search returns only matching products', { tag: ['@api', '@regression'] }, async ({ productsApi }) => {
+	test('search returns only matching products', { tag: [TAGS.api, TAGS.regression] }, async ({ productsApi }) => {
 		const results = await test.step(`Action: GET /products/search?q=${searchTerm}`, async () => {
 			return productsApi.searchProducts(searchTerm)
 		})
@@ -66,7 +71,7 @@ test.describe('[API / Products]', () => {
 
 	test(
 		'category filter returns only products of that category',
-		{ tag: ['@api', '@regression'] },
+		{ tag: [TAGS.api, TAGS.regression] },
 		async ({ productsApi }) => {
 			const leaf = pickLeafCategory(snapshot)
 
@@ -83,7 +88,7 @@ test.describe('[API / Products]', () => {
 		}
 	)
 
-	test('an unknown product id returns 404', { tag: ['@api', '@negative'] }, async ({ productsApi }) => {
+	test('an unknown product id returns 404', { tag: [TAGS.api, TAGS.negative] }, async ({ productsApi }) => {
 		const error = await test.step('Action: GET /products/{id} with a well-formed but unused id', async () => {
 			return productsApi.getProduct('01ZZZZZZZZZZZZZZZZZZZZZZZZ').catch((e: Error & { status?: number }) => e)
 		})

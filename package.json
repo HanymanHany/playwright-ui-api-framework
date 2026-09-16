@@ -24,6 +24,8 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"typecheck": "tsc --noEmit",
+		"check:tags": "node scripts/check-tags.mjs",
+		"gates": "npm run typecheck && npm run lint && npm run format:check && npm run check:tags",
 		"install:browsers": "playwright install chromium"
 	},
 	"devDependencies": {

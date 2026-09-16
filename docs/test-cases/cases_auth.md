@@ -1,5 +1,7 @@
 # Test cases: Auth
 
+**Key:** `auth`
+**Feature:** auth
 **From:** [checklist_auth.md](../checklists/checklist_auth.md)
 **Context:** [context.md](../context/auth/context.md)
 **Written:** 2026-08-29

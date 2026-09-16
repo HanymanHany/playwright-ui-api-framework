@@ -1,5 +1,5 @@
 /**
- * tests/api/contract.spec.ts — does the live API still match its own OpenAPI spec?
+ * tests/contract/contract.api.spec.ts — does the live API still match its own OpenAPI spec?
  *
  * These are the tests that would have saved me an afternoon on a real project.
  *
@@ -16,42 +16,27 @@
  * you have been on the other end of a silent contract change.
  */
 import { test, expect } from '../../fixtures/base.fixture'
-import { readSpec, validateResponse } from '../../api/contract'
+import { discoverUsedOperations, readSpec, validateResponse } from '../../api/contract'
+import { TAGS } from '../tags'
 
 /**
- * Every operation the API clients in `api/` actually call.
- *
- * The path templates must match the spec exactly. That is not pedantry — the very
- * first run of this test failed on `/products/{id}` because the spec calls it
- * `/products/{productId}`. A harmless difference, until you try to look an
- * operation up by name and silently find nothing.
+ * The operations this framework calls are read out of `api/*.api.ts` — see
+ * `discoverUsedOperations`. The previous version of this file listed them by hand,
+ * which meant a client could gain a method and lose contract coverage in the same
+ * commit, with nothing to say so.
  */
-const USED_OPERATIONS: Array<{ path: string; method: string }> = [
-	{ path: '/products', method: 'get' },
-	{ path: '/products/{productId}', method: 'get' },
-	{ path: '/products/search', method: 'get' },
-	{ path: '/categories/tree', method: 'get' },
-	{ path: '/brands', method: 'get' },
-	{ path: '/users/login', method: 'post' },
-	{ path: '/users/register', method: 'post' },
-	{ path: '/users/me', method: 'get' },
-	{ path: '/users/{userId}', method: 'put' },
-	{ path: '/users/{userId}', method: 'delete' },
-	{ path: '/favorites', method: 'get' },
-	{ path: '/favorites', method: 'post' },
-	{ path: '/favorites/{favoriteId}', method: 'delete' },
-]
+const USED_OPERATIONS = discoverUsedOperations()
 
 test.describe('[API / Contract]', () => {
 	test(
 		'every operation the framework calls still exists in the spec',
-		{ tag: ['@api', '@contract', '@smoke'] },
+		{ tag: [TAGS.api, TAGS.contract, TAGS.smoke] },
 		async () => {
 			const spec = await test.step('Prepare: read the spec downloaded in global-setup', async () => {
 				return readSpec()
 			})
 
-			await test.step('Verify: no operation the clients depend on has disappeared', async () => {
+			await test.step(`Verify: all ${USED_OPERATIONS.length} operations called by api/ are still documented`, async () => {
 				for (const { path, method } of USED_OPERATIONS) {
 					const operation = spec.paths[path]?.[method]
 					expect
@@ -62,20 +47,24 @@ test.describe('[API / Contract]', () => {
 		}
 	)
 
-	test('GET /products conforms to its documented schema', { tag: ['@api', '@contract'] }, async ({ productsApi }) => {
-		const page = await test.step('Action: GET /products', async () => {
-			return productsApi.getProducts(1)
-		})
+	test(
+		'GET /products conforms to its documented schema',
+		{ tag: [TAGS.api, TAGS.contract] },
+		async ({ productsApi }) => {
+			const page = await test.step('Action: GET /products', async () => {
+				return productsApi.getProducts(1)
+			})
 
-		await test.step('Verify: the whole paginated envelope validates', async () => {
-			const result = validateResponse('/products', 'get', '200', page)
-			expect(result.valid, `Response violates the spec:\n${result.errors.join('\n')}`).toBe(true)
-		})
-	})
+			await test.step('Verify: the whole paginated envelope validates', async () => {
+				const result = validateResponse('/products', 'get', '200', page)
+				expect(result.valid, `Response violates the spec:\n${result.errors.join('\n')}`).toBe(true)
+			})
+		}
+	)
 
 	test(
 		'GET /categories/tree conforms to its documented schema',
-		{ tag: ['@api', '@contract'] },
+		{ tag: [TAGS.api, TAGS.contract] },
 		async ({ productsApi }) => {
 			const tree = await test.step('Action: GET /categories/tree', async () => {
 				return productsApi.getCategoryTree()
@@ -88,7 +77,7 @@ test.describe('[API / Contract]', () => {
 		}
 	)
 
-	test('GET /users/me conforms to its documented schema', { tag: ['@api', '@contract'] }, async ({ usersApi }) => {
+	test('GET /users/me conforms to its documented schema', { tag: [TAGS.api, TAGS.contract] }, async ({ usersApi }) => {
 		const profile = await test.step('Action: GET /users/me as the run user', async () => {
 			return usersApi.me()
 		})

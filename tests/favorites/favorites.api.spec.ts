@@ -1,5 +1,5 @@
 /**
- * tests/api/favorites.spec.ts — favorites endpoints, as the run user.
+ * tests/favorites/favorites.api.spec.ts — favorites endpoints, as the run user.
  *
  * Note what is NOT asserted anywhere here: the total number of favorites.
  * The suite runs in parallel and the hybrid tests add favorites to the same user,
@@ -13,6 +13,9 @@
 import { test, expect } from '../../fixtures/base.fixture'
 import { readDataSnapshot, productsFor, DataSnapshot } from '../../utils/data-snapshot'
 
+import { expectClientError } from '../../api/expect'
+import { TAGS } from '../tags'
+
 import type { Product } from '../../api/types'
 
 let snapshot: DataSnapshot
@@ -24,7 +27,7 @@ test.beforeAll(() => {
 })
 
 test.describe('[API / Favorites]', () => {
-	test('a favorite is created and appears in the list', { tag: ['@api', '@smoke'] }, async ({ favoritesApi }) => {
+	test('a favorite is created and appears in the list', { tag: [TAGS.api, TAGS.smoke] }, async ({ favoritesApi }) => {
 		const product = products[0]!
 		let favoriteId = ''
 
@@ -45,30 +48,33 @@ test.describe('[API / Favorites]', () => {
 		})
 	})
 
-	test('favouriting the same product twice is rejected', { tag: ['@api', '@negative'] }, async ({ favoritesApi }) => {
-		const product = products[1]!
-		let favoriteId = ''
+	test(
+		'favouriting the same product twice is rejected',
+		{ tag: [TAGS.api, TAGS.negative] },
+		async ({ favoritesApi }) => {
+			const product = products[1]!
+			let favoriteId = ''
 
-		await test.step('Prepare: favourite the product once', async () => {
-			const created = await favoritesApi.addFavorite(product.id)
-			favoriteId = created.id
-		})
+			await test.step('Prepare: favourite the product once', async () => {
+				const created = await favoritesApi.addFavorite(product.id)
+				favoriteId = created.id
+			})
 
-		const response = await test.step('Action: POST the same product again', async () => {
-			return favoritesApi.addFavoriteRaw(product.id)
-		})
+			const response = await test.step('Action: POST the same product again', async () => {
+				return favoritesApi.addFavoriteRaw(product.id)
+			})
 
-		await test.step('Verify: client error, not a silent second row', async () => {
-			expect(response.status).toBeGreaterThanOrEqual(400)
-			expect(response.status).toBeLessThan(500)
-		})
+			await test.step('Verify: client error, not a silent second row', async () => {
+				expectClientError(response, 'favouriting the same product twice')
+			})
 
-		await test.step('Cleanup: remove it', async () => {
-			await favoritesApi.removeFavorite(favoriteId).catch(() => {})
-		})
-	})
+			await test.step('Cleanup: remove it', async () => {
+				await favoritesApi.removeFavorite(favoriteId).catch(() => {})
+			})
+		}
+	)
 
-	test('a deleted favorite is gone from the list', { tag: ['@api', '@regression'] }, async ({ favoritesApi }) => {
+	test('a deleted favorite is gone from the list', { tag: [TAGS.api, TAGS.regression] }, async ({ favoritesApi }) => {
 		const product = products[2]!
 		let favoriteId = ''
 

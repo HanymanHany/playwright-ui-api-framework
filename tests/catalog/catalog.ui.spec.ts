@@ -1,5 +1,5 @@
 /**
- * tests/ui/catalog.spec.ts — catalog filtering, search, and sorting.
+ * tests/catalog/catalog.ui.spec.ts — catalog filtering, search, and sorting.
  *
  * THE POINT OF THIS FILE: the UI is verified against API truth.
  *
@@ -19,6 +19,8 @@
 import { ProductsApi } from '../../api/products.api'
 import { test } from '../../fixtures/base.fixture'
 import { readDataSnapshot, pickLeafCategory, pickSearchTerm, DataSnapshot } from '../../utils/data-snapshot'
+
+import { TAGS } from '../tags'
 
 import type { CategoryNode } from '../../api/types'
 
@@ -40,7 +42,7 @@ test.beforeAll(async () => {
 test.describe('[UI / Catalog]', () => {
 	test(
 		'category filter shows only the products the API returns',
-		{ tag: ['@ui', '@smoke'] },
+		{ tag: [TAGS.ui, TAGS.smoke] },
 		async ({ catalogPage }) => {
 			await test.step('Prepare: open the catalog', async () => {
 				await catalogPage.goto()
@@ -57,7 +59,7 @@ test.describe('[UI / Catalog]', () => {
 		}
 	)
 
-	test('search shows only matching products', { tag: ['@ui', '@regression'] }, async ({ catalogPage }) => {
+	test('search shows only matching products', { tag: [TAGS.ui, TAGS.regression] }, async ({ catalogPage }) => {
 		await test.step('Prepare: open the catalog', async () => {
 			await catalogPage.goto()
 		})
@@ -71,7 +73,7 @@ test.describe('[UI / Catalog]', () => {
 		})
 	})
 
-	test('sort by price ascending reorders the grid', { tag: ['@ui', '@regression'] }, async ({ catalogPage }) => {
+	test('sort by price ascending reorders the grid', { tag: [TAGS.ui, TAGS.regression] }, async ({ catalogPage }) => {
 		await test.step('Prepare: open the catalog', async () => {
 			await catalogPage.goto()
 			await catalogPage.assertPageLoaded()

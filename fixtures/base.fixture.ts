@@ -13,6 +13,7 @@
  *                register and account pages; the "ui" project starts every other
  *                test already authenticated
  * Auto:          _allureLabels — severity/layer/feature derived from tags
+ *                _apiTraffic   — records API calls, attaches them when a test fails
  * Overrides:     page — captures console errors, attached to the report on failure
  */
 import { test as base } from '@playwright/test'
@@ -31,6 +32,7 @@ import { CatalogPage } from '../pages/shop/catalog.page'
 import { CheckoutPage } from '../pages/shop/checkout.page'
 import { ProductPage } from '../pages/shop/product.page'
 import { applyAllureLabels } from '../core/allure-labels'
+import { startRecording, stopRecording, trafficReport } from '../api/traffic'
 
 /** Page objects that all share one logged-out browser context. */
 export interface GuestSession {
@@ -55,6 +57,7 @@ type TestFixtures = {
 	usersApi: UsersApi
 	runUser: RunUser
 	_allureLabels: void
+	_apiTraffic: void
 }
 
 export const test = base.extend<TestFixtures>({
@@ -153,6 +156,34 @@ export const test = base.extend<TestFixtures>({
 		async ({}, use, testInfo) => {
 			await applyAllureLabels(testInfo)
 			await use()
+		},
+		{ auto: true, scope: 'test' },
+	],
+
+	// ── API traffic capture ─────────────────────────────────────────────────────
+
+	/**
+	 * Records every API call this test makes and attaches the conversation when it
+	 * fails — bodies included, secrets redacted, each entry with a `curl` that
+	 * reproduces it (`api/traffic.ts`).
+	 *
+	 * A passing test attaches nothing. The recording itself is on for every test,
+	 * including UI ones: a UI failure is regularly caused by the API call that set
+	 * the state up, and by the time the browser shows an empty list the useful part
+	 * has already happened.
+	 */
+	_apiTraffic: [
+		async ({}, use, testInfo) => {
+			startRecording()
+			await use()
+			const exchanges = stopRecording()
+
+			if (testInfo.status !== testInfo.expectedStatus && exchanges.length > 0) {
+				await testInfo.attach('api-traffic', {
+					body: trafficReport(exchanges, testInfo.title),
+					contentType: 'text/plain',
+				})
+			}
 		},
 		{ auto: true, scope: 'test' },
 	],

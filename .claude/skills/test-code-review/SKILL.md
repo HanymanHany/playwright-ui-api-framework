@@ -58,6 +58,10 @@ Every one has actually happened in this project.
 9. **Locator provenance.** Every locator traces to `docs/context/<feature>/context.md`.
    One that does not is either invented or stale — both are findings.
 
+Reproducing a finding means running something: do it under
+`.claude/rules/running-tests.md`, including the isolation check when the suspicion is a
+shared entity rather than a wrong assertion.
+
 ## Step 3 — Important: correctness of form
 
 10. `test`/`expect` imported from `fixtures/base.fixture` only
@@ -77,7 +81,7 @@ git diff HEAD | grep -nE 'test\.only|retries:\s*[1-9]|test\.skip'
 ```
 
 - `retries` raised, or a failing test skipped, to make a run green
-- A `// MISSING:` locator replaced with a guess instead of a fresh exploration run
+- A `// MISSING:` locator replaced with a guess instead of a fresh `/checklist` run
 - An assertion weakened to match observed behaviour, without that being called out
 
 Any of these is reported and reverted, never negotiated.

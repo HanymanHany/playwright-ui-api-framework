@@ -8,10 +8,12 @@
 A working test framework — UI, API, and **hybrid** — built against a real
 application: the [Toolshop demo store](https://practicesoftwaretesting.com).
 
-Clone it, run `npm test`, and 37 tests execute against a live site in about
-20 seconds. Nothing to configure, no account to create. Three of them fail —
-[on purpose](#the-three-tests-that-fail-on-purpose), because a report nobody ever
-sees red teaches nothing.
+Clone it, run `npm test`, and 37 tests execute against a live site in roughly half a
+minute — 34 green and three that fail
+[on purpose](#the-three-tests-that-fail-on-purpose), because a report nobody ever sees
+red teaches nothing. Nothing to configure, no account to create. (The suite talks to a
+public demo over the internet, so the wall-clock number moves with the network: 25-35
+seconds at four workers, about twice that at one.)
 
 It is meant to be **a starting point, not a finished product**. Joining a team that
 already has a framework is a very different experience from starting from an empty
@@ -19,6 +21,20 @@ folder, and this is the empty folder problem solved once. What is missing, and w
 is listed honestly under [What this framework is not](#what-this-framework-is-not).
 
 ---
+
+## When a test fails
+
+A red test here hands over what it did, not only what it expected:
+
+- **`api-traffic`** — every API call the test made: anything not 2xx first with both
+  bodies, then the full sequence, and a `curl` per entry that replays it. Secrets are
+  redacted before they are ever stored, so the attachment is safe to keep in CI
+  artifacts.
+- **`browser-console`** — JS errors and warnings from the page, attached only on
+  failure. A locator that "timed out" is regularly a component that threw during render.
+- The usual Playwright trace and screenshot.
+
+Nothing is attached when a test passes — this is diagnostics, not logging.
 
 ## Why it looks the way it does
 
@@ -143,24 +159,41 @@ Every feature went through the same pipeline, and each stage has a gate where a
 human approves before the next one starts:
 
 ```
-/setup → /explore → /cases → /autotests → /run-tests → /flake-hunt → /test-code-review → /commit-push
+/setup → /checklist <key> → /cases <key> → /autotests <key> → /test-code-review → /commit-push
 ```
 
-- **rules** (`.claude/rules/`) — the standards: conventions, architecture decisions,
-  how to operate a browser when mapping a feature
-- **skills** (`.claude/skills/`) — the procedures, one per stage above
-- **agents** (`.claude/agents/`) — narrow executors with restricted permissions:
-  `explorer` writes documentation and never touches test code; `test-writer` writes
-  code and never runs it; `reviewer` reviews and never commits
-- **hooks** (`.claude/hooks/`) — the two rules that are enforced rather than asked
-  for: generated files, `.env` and `.auth/` cannot be edited, and `--force`,
-  `--no-verify` and `--amend` are refused. A rule that can be forgotten is a
-  suggestion; these cannot be forgotten
+`<key>` is a tracker id (`PROJ-431`) or a feature name (`checkout`), and it is the only
+thing passed between stages — each one resolves its own inputs from it. If a tracker MCP
+server is configured, `/checklist` reads the ticket itself; if not, the feature is
+described in the request. Either way the acceptance criteria are treated as input rather
+than truth: the `explorer` agent opens the running application and records what is
+actually there, and the disagreements are the first findings of the task.
 
-`/flake-hunt` is the one that keeps the rest honest. `retries: 0` and
-`fullyParallel: true` are claims until something re-runs the suite five times and
-compares. It classifies what it finds — a shared entity, a hoisted token, state that
-outlived teardown — and never proposes a retry as the answer.
+- **rules** (`.claude/rules/`) — the standards: conventions, architecture decisions, how
+  to operate a browser, how tests are run and fixed, and how the stages hand work to each
+  other (including what a stage does when run without a key, or before the stage it
+  depends on — it stops and names the command that produces what is missing)
+- **skills** (`.claude/skills/`) — the procedures, one per stage above. A stage exists as
+  a command only where a human decides something; everything else is a rule
+- **agents** (`.claude/agents/`) — narrow executors with restricted permissions:
+  `explorer` drives the browser through Playwright MCP and never touches test code;
+  `test-writer` writes code and never runs it; `reviewer` reviews and never commits
+- **hooks** (`.claude/hooks/`) — the two rules that are enforced rather than asked for:
+  generated files, `.env` and `.auth/` cannot be edited, and `--force`, `--no-verify` and
+  `--amend` are refused. A rule that can be forgotten is a suggestion; these cannot be
+  forgotten
+
+Two things that used to be commands are rules now, because neither contained a decision.
+Running and fixing tests (one at a time, at most two fix attempts, never a raised retry)
+lives in [.claude/rules/running-tests.md](.claude/rules/running-tests.md), together with
+the isolation check that keeps `retries: 0` and `fullyParallel: true` honest — five runs
+at four workers, and a table that tells a shared entity from a hoisted token from state
+that outlived teardown. A retry is never the answer it proposes.
+
+Artifacts have two lifetimes and are stored accordingly: `docs/context/<feature>/context.md`
+belongs to the feature and is merged for years, while the checklist, the cases and the plan
+belong to one task and are keyed by it. Mixing them produces ten copies of the same locator
+map a year later, half of them wrong, with no way to tell which half.
 
 The last two stages are chained rather than merged: the review records a fingerprint of
 what it approved, and `/commit-push` refuses a diff that has changed since. Two stages,
@@ -176,18 +209,20 @@ A missing locator is reported, not guessed.
 Different stages need different amounts of judgment, and paying top-tier rates for
 mechanical work is just waste. Each skill and agent pins its own model:
 
-| Stage                                                           | Model  | Why                                                       |
-| --------------------------------------------------------------- | ------ | --------------------------------------------------------- |
-| `/cases`, `/test-code-review`, `reviewer`                       | Opus   | Test design and finding subtle violations — judgment work |
-| `/setup`, `/explore`, `/autotests`, `/run-tests`, `/flake-hunt` | Sonnet | Following a spec precisely; the rules do the thinking     |
-| `/commit-push`                                                  | Haiku  | Mechanical: stage, message, confirm                       |
+| Stage                                        | Model  | Why                                                       |
+| -------------------------------------------- | ------ | --------------------------------------------------------- |
+| `/cases`, `/test-code-review`, `reviewer`    | Opus   | Test design and finding subtle violations — judgment work |
+| `/setup`, `/checklist`, `/autotests`, agents | Sonnet | Following a spec precisely; the rules do the thinking     |
+| `/commit-push`                               | Haiku  | Mechanical: stage, message, confirm                       |
 
 ## What this framework is not
 
 Being specific about the gaps is more useful than pretending there are none:
 
-- **No integration with your TMS, Jira, or reporting stack.** Those are per-company
-  and would be dead weight here.
+- **No integration with your TMS, Jira, or reporting stack.** Those are per-company and
+  would be dead weight here. The pipeline is shaped for them — stages take a task key, and
+  `/checklist` reads a ticket through a tracker MCP server when one is configured — but
+  wiring Qase, TestRail or Jira is yours to add.
 - **No SSO, MFA, or refresh-token flows.** The demo authenticates with a plain
   email/password. Real auth is usually the first thing you have to build yourself.
 - **No mobile, no visual regression, no load testing.** Different tools, different
@@ -195,7 +230,10 @@ Being specific about the gaps is more useful than pretending there are none:
 - **Parallelism is demonstrated on a public demo.** Registering a user per run works
   here; your environment may have shared entities, tenant limits, or a seed job that
   makes the answer different. The _principle_ transfers, the implementation may not.
-- **34 tests is a skeleton, not coverage.** Which of your scenarios deserve
+- **The pipeline artifacts under `docs/` are a worked example, not full coverage.**
+  `auth` has the whole chain — checklist, cases, plan; the other features have their
+  verified context map only. That is what one feature through the pipeline looks like.
+- **34 green tests is a skeleton, not coverage.** Which of your scenarios deserve
   automation is a question about your product and your risks — the one part of this
   that genuinely cannot be copied.
 

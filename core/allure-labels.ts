@@ -41,9 +41,17 @@ function severityFor(tags: string[]): string {
 	return 'minor'
 }
 
-/** tests/hybrid/profile.spec.ts → "hybrid". The layer that broke is the first question. */
+/**
+ * `tests/profile/profile.hybrid.spec.ts` → "hybrid". The layer that broke is the first
+ * question a report has to answer: is the API wrong, or only the browser layer?
+ *
+ * It is read from the filename SUFFIX, not from the folder. Specs are grouped by
+ * feature (architecture.md, decision 13), so the folder says "profile" — which the
+ * feature label already carries. Reading the folder here produced two labels saying
+ * the same word, and a layer filter that could not filter by layer.
+ */
 function layerFor(file: string): string {
-	const match = /tests[\\/](\w+)[\\/]/.exec(file)
+	const match = /\.(api|ui|hybrid)\.spec\.ts$/.exec(file.replace(/\\/g, '/'))
 	return match?.[1] ?? 'other'
 }
 
